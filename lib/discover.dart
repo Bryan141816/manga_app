@@ -11,8 +11,6 @@ Future<List<Map<String, String>>> fetchMangaDataWithRetry(
     try {
       return await fetchMangaData(offset, searchMode, searchString);
     } catch (e) {
-      print('Error: $e');
-      print('Retrying...');
       retryCount++;
     }
   }
@@ -85,14 +83,14 @@ Future<List<Map<String, String>>> fetchMangaData(
           }
         }
       } else {
-        print(
-            'Error retrieving cover information: ${coverResponse.statusCode}');
+        /*print(
+            'Error retrieving cover information: ${coverResponse.statusCode}');*/
       }
     } else {
-      print('Error retrieving manga information: ${mangaResponse.statusCode}');
+      //print('Error retrieving manga information: ${mangaResponse.statusCode}');
     }
   } catch (e) {
-    print('Error: $e');
+    //print('Error: $e');
     // Rethrow the error to be caught by the retry mechanism
     rethrow;
   }
@@ -113,11 +111,11 @@ Future<String> getAuthorName(String authorId) async {
       authorName =
           authorJsonResponse['data']['attributes']['name'] ?? 'Unknown Author';
     } else {
-      print(
-          'Error retrieving author information: ${authorResponse.statusCode}');
+      /*print(
+          'Error retrieving author information: ${authorResponse.statusCode}');*/
     }
   } catch (e) {
-    print('Error: $e');
+    //print('Error: $e');
     // Handle the error as needed
   }
 

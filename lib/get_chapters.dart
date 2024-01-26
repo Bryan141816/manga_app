@@ -32,7 +32,7 @@ Future<List<Map<String, dynamic>>?> _getChapters(
       }
     }
   } catch (e) {
-    print('Error: $e');
+    //print('Error: $e');
     // Rethrow the error to be caught by the retry mechanism
     rethrow;
   }
