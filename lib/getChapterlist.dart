@@ -14,21 +14,21 @@ Future<List<Map<String, dynamic>>?> _getChapters(
           json.decode(chapterListresponse.body);
       final List<dynamic> chapterList = chapterJsonResponse['data'];
       for (final chapter in chapterList) {
-        final String id = chapter['id'].toString();
-        final volume = chapter["attributes"]["volume"] ?? "";
-        final String chapterNumber =
-            chapter["attributes"]["chapter"].toString() ?? "";
+        final String id = chapter['id'];
+        final String volume = chapter["attributes"]["volume"] ?? "";
+        final String chapterNumber = chapter["attributes"]["chapter"] ?? "";
         final String title = chapter["attributes"]["title"] ?? "";
         final String pubishDate = chapter["attributes"]["publishAt"] ?? "";
-        final pagesNumber = {chapter["attributes"]["pages"]};
-        chapterIds.add({
-          'chapter_id': id,
-          'volume': volume,
-          'chapterNumber': chapterNumber,
-          'title': title,
-          'publishDate': pubishDate,
-          'pagesNumber': pagesNumber,
-        });
+        final int pageNumber = chapter["attributes"]["pages"];
+        if (pageNumber > 0) {
+          chapterIds.add({
+            'chapter_id': id,
+            'volume': volume,
+            'chapterNumber': chapterNumber,
+            'title': title,
+            'publishDate': pubishDate,
+          });
+        }
       }
     }
   } catch (e) {

@@ -314,12 +314,12 @@ class _MyHomePageState extends State<MyHomePage> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: 'Search',
-            ),
-            BottomNavigationBarItem(
               icon: Icon(Icons.favorite),
               label: 'Favorites',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history),
+              label: 'History',
             ),
           ],
           //currentIndex: _selectedIndex,
@@ -605,7 +605,7 @@ class ChapterViewPage extends StatefulWidget {
     required this.mangaId,
     required this.coverIds,
     required this.pageIndex,
-    this.initialIndex = 0,
+    this.initialIndex = 2,
   });
 
   @override
@@ -616,7 +616,9 @@ class _ChapterPageState extends State<ChapterViewPage> {
   List<String> imageUrls = [];
   late PageController pageController;
   late Future<List<String>> imageUrlsFuture;
+
   int pageIndex = 0;
+  bool isPrevious = false;
 
   @override
   void initState() {
@@ -624,7 +626,6 @@ class _ChapterPageState extends State<ChapterViewPage> {
     // Initialize the list of image URLs based on mangaId and coverId
     pageIndex = widget.pageIndex;
     _initializeImageUrls();
-    pageController = PageController(initialPage: widget.initialIndex);
   }
 
   Future<void> _initializeImageUrls() async {
@@ -632,12 +633,35 @@ class _ChapterPageState extends State<ChapterViewPage> {
     try {
       List<String> fetchedImages = await imageUrlsFuture;
       setState(() {
+        imageUrls.clear();
         imageUrls = fetchedImages;
+        // Print the updated value of isPrevious after setting the state
+        if (isPrevious) {
+          pageController = PageController(initialPage: imageUrls.length + 1);
+        } else {
+          pageController = PageController(initialPage: widget.initialIndex);
+        }
       });
     } catch (e) {
       // Handle error
       print('Error fetching data: $e');
     }
+  }
+
+  void nextChapter() {
+    setState(() {
+      isPrevious = false;
+      pageIndex--;
+      _initializeImageUrls();
+    });
+  }
+
+  void previousChapter() {
+    setState(() {
+      isPrevious = true;
+      pageIndex++;
+      _initializeImageUrls();
+    });
   }
 
   @override
@@ -671,20 +695,43 @@ class _ChapterPageState extends State<ChapterViewPage> {
 
   Widget _buildPhotoViewGallery() {
     return PhotoViewGallery.builder(
-      itemCount: imageUrls.length,
+      itemCount: imageUrls.length + 4,
       builder: (context, index) {
-        return PhotoViewGalleryPageOptions(
-          imageProvider: CachedNetworkImageProvider(imageUrls[index]),
-          minScale: PhotoViewComputedScale.contained,
-          maxScale: PhotoViewComputedScale.covered * 2,
-        );
+        if (index < 2 || index > imageUrls.length + 1) {
+          // Check if it's the first or last index and add a spacer
+          return PhotoViewGalleryPageOptions.customChild(
+            child: Center(
+              child: Text('Chapter'),
+            ),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
+          );
+        } else {
+          // Normal image
+          return PhotoViewGalleryPageOptions(
+            imageProvider: CachedNetworkImageProvider(
+              imageUrls[index - 2], // Subtract 1 to get the correct image index
+            ),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
+          );
+        }
       },
       scrollPhysics: BouncingScrollPhysics(),
       backgroundDecoration: BoxDecoration(
         color: Colors.black,
       ),
       pageController: pageController,
-      onPageChanged: (index) {},
+      onPageChanged: (index) {
+        if (index == 0) {
+          if (pageIndex == widget.coverIds.length - 1) {
+            return;
+          }
+          previousChapter();
+        } else if (index == imageUrls.length + 3) {
+          nextChapter();
+        }
+      },
     );
   }
 }
