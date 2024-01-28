@@ -45,6 +45,9 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Map<String, String>> mangaList = [];
   bool isLoadingPage = true;
   bool isLoadingMore = false;
+  bool isError = false;
+  String errorMessage = '';
+
   bool withText = false;
   int offset = 0;
   bool searchMode = false;
@@ -83,11 +86,14 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         mangaList = data;
         isLoadingPage = false;
+        isError = false;
+        errorMessage = '';
       });
     } catch (e) {
-      // Handle error
       setState(() {
         isLoadingPage = false;
+        isError = true;
+        errorMessage = 'Unable to fetch data. Please try again.';
       });
     }
   }
@@ -249,90 +255,122 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               Expanded(
                 child: Center(
-                  child: isLoadingPage
-                      ? const CircularProgressIndicator()
-                      : GridView.builder(
-                          controller: _scrollController,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 15.0,
-                            childAspectRatio: 2 / 3,
-                            mainAxisSpacing: 15.0,
-                          ),
-                          itemCount: mangaList.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            String? mangaid = mangaList[index]['manga_id'];
-                            String? filename = mangaList[index]['filename'];
-                            String? title = mangaList[index]['title'];
-                            String titleLabel = title!.isNotEmpty
-                                ? title.length > 50
-                                    ? '-${title.substring(0, 50 - 3)}...'
-                                    : '-$title'
-                                : '';
+                  child: isError && !isLoadingPage
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(errorMessage),
+                            SizedBox(height: 16.0),
+                            ElevatedButton(
+                              onPressed: _handleRefresh,
+                              child: Text('Try Again'),
+                            ),
+                          ],
+                        )
+                      : (isLoadingPage
+                          ? const CircularProgressIndicator()
+                          : GridView.builder(
+                              controller: _scrollController,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 15.0,
+                                childAspectRatio: 2 / 3,
+                                mainAxisSpacing: 15.0,
+                              ),
+                              itemCount: mangaList.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                String? mangaid = mangaList[index]['manga_id'];
+                                String? filename = mangaList[index]['filename'];
+                                String? title = mangaList[index]['title'];
+                                String titleLabel = title!.isNotEmpty
+                                    ? title.length > 50
+                                        ? '-${title.substring(0, 50 - 3)}...'
+                                        : '-$title'
+                                    : '';
 
-                            String imageUrl =
-                                'https://mangadex.org/covers/$mangaid/$filename';
+                                String imageUrl =
+                                    'https://mangadex.org/covers/$mangaid/$filename';
 
-                            return GestureDetector(
-                              onTap: () {
-                                // Navigate to the new page when an item is tapped
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => MangaDetailPage(
-                                        mangaData: mangaList[index]),
+                                return GestureDetector(
+                                  onTap: () {
+                                    // Navigate to the new page when an item is tapped
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (context, animation,
+                                                secondaryAnimation) =>
+                                            MangaDetailPage(
+                                          mangaData: mangaList[index],
+                                        ),
+                                        transitionsBuilder: (context, animation,
+                                            secondaryAnimation, child) {
+                                          const begin = 0.0;
+                                          const end = 5.0;
+                                          var tween =
+                                              Tween(begin: begin, end: end);
+                                          var opacityAnimation =
+                                              animation.drive(tween);
+
+                                          return FadeTransition(
+                                            opacity: opacityAnimation,
+                                            child: child,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  child: Stack(
+                                    children: [
+                                      AspectRatio(
+                                        aspectRatio: 2 / 3,
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                          child: CachedNetworkImage(
+                                            imageUrl: imageUrl,
+                                            placeholder: (context, url) =>
+                                                const Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const Icon(Icons.error),
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8.0),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.transparent,
+                                                Colors.black.withOpacity(0.6),
+                                              ],
+                                            ),
+                                          ),
+                                          child: Text(
+                                            titleLabel,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14.0,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
-                              child: Stack(
-                                children: [
-                                  AspectRatio(
-                                    aspectRatio: 2 / 3,
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child: CachedNetworkImage(
-                                        imageUrl: imageUrl,
-                                        placeholder: (context, url) =>
-                                            const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                            const Icon(Icons.error),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8.0),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.black.withOpacity(0.6),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Text(
-                                        titleLabel,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14.0,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                            )),
                 ),
               ),
               if (isLoadingMore)
@@ -468,7 +506,7 @@ class MangaDetailPageState extends State<MangaDetailPage> {
                             ),
 
                             const SizedBox(width: 16.0),
-                            // Title on the right
+                            // Title and Add to Favorites on the right
                             Flexible(
                               child: Align(
                                 alignment: Alignment.topCenter,
@@ -484,19 +522,41 @@ class MangaDetailPageState extends State<MangaDetailPage> {
                                     Text(
                                       authorName,
                                       style: const TextStyle(
-                                          fontSize: 16.0,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color.fromARGB(
-                                              255, 170, 170, 170)),
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            Color.fromARGB(255, 170, 170, 170),
+                                      ),
                                     ),
                                     const SizedBox(height: 5.0),
                                     Text(
                                       status,
                                       style: const TextStyle(
-                                          fontSize: 16.0,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color.fromARGB(
-                                              255, 170, 170, 170)),
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.w500,
+                                        color:
+                                            Color.fromARGB(255, 170, 170, 170),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5.0),
+                                    // Heart icon button and "Add to Favorites" text
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.favorite_border,
+                                          color: Color.fromARGB(255, 170, 170,
+                                              170), // Change the color as needed
+                                        ),
+                                        const SizedBox(width: 5.0),
+                                        Text(
+                                          "Add to Favorites",
+                                          style: const TextStyle(
+                                            fontSize: 16.0,
+                                            color: Color.fromARGB(
+                                                255, 170, 170, 170),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -504,6 +564,7 @@ class MangaDetailPageState extends State<MangaDetailPage> {
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 16.0),
                         Text(
                           shouldShowPartialDescription &&
@@ -570,14 +631,30 @@ class MangaDetailPageState extends State<MangaDetailPage> {
                                   // Navigate to the photo_view page and pass mangaId and coverId
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ChapterViewPage(
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation,
+                                              secondaryAnimation) =>
+                                          ChapterViewPage(
                                         mangaId: mangaId,
                                         chapterList: chapterList,
                                         pageIndex: index,
                                         mangaTitle: widget.mangaData['title'],
                                         // Add other parameters if needed
                                       ),
+                                      transitionsBuilder: (context, animation,
+                                          secondaryAnimation, child) {
+                                        const begin = 0.0;
+                                        const end = 5.0;
+                                        var tween =
+                                            Tween(begin: begin, end: end);
+                                        var opacityAnimation =
+                                            animation.drive(tween);
+
+                                        return FadeTransition(
+                                          opacity: opacityAnimation,
+                                          child: child,
+                                        );
+                                      },
                                     ),
                                   );
                                 },
@@ -651,6 +728,8 @@ class ChapterPageState extends State<ChapterViewPage> {
   bool isPrevious = false;
   bool isAppBarVisible = false;
 
+  int currentPage = 1;
+
   late String volume;
   late String chapterNumber;
   late String title;
@@ -678,9 +757,11 @@ class ChapterPageState extends State<ChapterViewPage> {
         if (isPrevious) {
           pageController =
               PageController(initialPage: imageUrls.length + 1 - offset);
+          currentPage = imageUrls.length;
         } else {
           pageController =
               PageController(initialPage: widget.initialIndex - offset);
+          currentPage = 1;
         }
       });
     } catch (e) {
@@ -815,183 +896,230 @@ class ChapterPageState extends State<ChapterViewPage> {
           } else {
             itemcount = imageUrls.length + 4;
           }
-          return PhotoViewGallery.builder(
-            itemCount: itemcount,
-            builder: (context, index) {
-              int offset = pageIndex != widget.chapterList.length - 1 ? 1 : 0;
-              if (index < 1 + offset) {
-                if (pageIndex != widget.chapterList.length - 1) {
-                  final chapter = widget.chapterList[pageIndex + 1];
-                  String prevvolume = {chapter['volume'].toString()}.isNotEmpty
-                      ? 'Vol.${chapter['volume'].toString()}'
-                      : "";
-                  String prevchapterNumber =
-                      {chapter['chapterNumber'].toString()}.isNotEmpty
-                          ? 'Ch.${chapter['chapterNumber'].toString()}'
-                          : "";
-                  final prevTitle = chapter['title'].toString();
-                  final currentTitle =
-                      widget.chapterList[pageIndex]['title'].toString();
-                  return PhotoViewGalleryPageOptions.customChild(
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.all(30.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Previous:',
-                            style: TextStyle(
-                                fontSize: 18.0, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            "$prevvolume $prevchapterNumber$prevTitle",
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20.0),
-                          ),
-                          const Text(
-                            'Current:',
-                            style: TextStyle(
-                                fontSize: 18.0, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '$volume $chapterNumber$currentTitle',
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20.0),
-                          ),
-                        ],
+          return Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: PhotoViewGallery.builder(
+                      itemCount: itemcount,
+                      builder: (context, index) {
+                        int offset =
+                            pageIndex != widget.chapterList.length - 1 ? 1 : 0;
+                        if (index < 1 + offset) {
+                          if (pageIndex != widget.chapterList.length - 1) {
+                            final chapter = widget.chapterList[pageIndex + 1];
+                            String prevvolume =
+                                {chapter['volume'].toString()}.isNotEmpty
+                                    ? 'Vol.${chapter['volume'].toString()}'
+                                    : "";
+                            String prevchapterNumber = {
+                              chapter['chapterNumber'].toString()
+                            }.isNotEmpty
+                                ? 'Ch.${chapter['chapterNumber'].toString()}'
+                                : "";
+                            final prevTitle = chapter['title'].toString();
+                            final currentTitle = widget.chapterList[pageIndex]
+                                    ['title']
+                                .toString();
+                            return PhotoViewGalleryPageOptions.customChild(
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(30.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Previous:',
+                                      style: TextStyle(
+                                          fontSize: 18.0,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      "$prevvolume $prevchapterNumber$prevTitle",
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20.0),
+                                    ),
+                                    const Text(
+                                      'Current:',
+                                      style: TextStyle(
+                                          fontSize: 18.0,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '$volume $chapterNumber$currentTitle',
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              minScale: PhotoViewComputedScale.contained,
+                              maxScale: PhotoViewComputedScale.covered * 2,
+                            );
+                          } else {
+                            return PhotoViewGalleryPageOptions.customChild(
+                              child: Container(
+                                alignment: Alignment.center,
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "There's no previous chapter.",
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 20.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              minScale: PhotoViewComputedScale.contained,
+                              maxScale: PhotoViewComputedScale.covered * 2,
+                            );
+                          }
+                        } else if (index > imageUrls.length + offset) {
+                          if (pageIndex != 0) {
+                            final chapter = widget.chapterList[pageIndex - 1];
+                            String prevvolume =
+                                {chapter['volume'].toString()}.isNotEmpty
+                                    ? 'Vol.${chapter['volume'].toString()}'
+                                    : "";
+                            String prevchapterNumber = {
+                              chapter['chapterNumber'].toString()
+                            }.isNotEmpty
+                                ? 'Ch.${chapter['chapterNumber'].toString()}'
+                                : "";
+                            final prevTitle = chapter['title'].toString();
+                            final currentTitle = widget.chapterList[pageIndex]
+                                    ['title']
+                                .toString();
+                            return PhotoViewGalleryPageOptions.customChild(
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(30.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Next:',
+                                      style: TextStyle(
+                                          fontSize: 18.0,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      "$prevvolume $prevchapterNumber$prevTitle",
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20.0),
+                                    ),
+                                    const Text(
+                                      'Current:',
+                                      style: TextStyle(
+                                          fontSize: 18.0,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '$volume $chapterNumber$currentTitle',
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              minScale: PhotoViewComputedScale.contained,
+                              maxScale: PhotoViewComputedScale.covered * 2,
+                            );
+                          } else {
+                            final currentTitle = widget.chapterList[pageIndex]
+                                    ['title']
+                                .toString();
+                            return PhotoViewGalleryPageOptions.customChild(
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(30.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Finished:',
+                                      style: TextStyle(
+                                          fontSize: 18.0,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '$volume $chapterNumber$currentTitle',
+                                      softWrap: true,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              minScale: PhotoViewComputedScale.contained,
+                              maxScale: PhotoViewComputedScale.covered * 2,
+                            );
+                          }
+                        } else {
+                          return PhotoViewGalleryPageOptions(
+                            imageProvider: CachedNetworkImageProvider(
+                              imageUrls[index - (1 + offset)],
+                            ),
+                            minScale: PhotoViewComputedScale.contained,
+                            maxScale: PhotoViewComputedScale.covered * 2,
+                          );
+                        }
+                      },
+                      scrollPhysics: const BouncingScrollPhysics(),
+                      backgroundDecoration: const BoxDecoration(
+                        color: Colors.black,
                       ),
+                      pageController: pageController,
+                      onPageChanged: (index) {
+                        int offset =
+                            pageIndex != widget.chapterList.length - 1 ? 0 : 1;
+                        setState(() {
+                          currentPage = index - (1 - offset);
+                        });
+                        if (index == 0) {
+                          if (pageIndex == widget.chapterList.length - 1) {
+                            return;
+                          }
+                          previousChapter();
+                        } else if (index == imageUrls.length + 3 - offset) {
+                          if (pageIndex == 0) {
+                            return;
+                          }
+                          nextChapter();
+                        }
+                      },
                     ),
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 2,
-                  );
-                } else {
-                  return PhotoViewGalleryPageOptions.customChild(
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "There's no previous chapter.",
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 2,
-                  );
-                }
-              } else if (index > imageUrls.length + offset) {
-                if (pageIndex != 0) {
-                  final chapter = widget.chapterList[pageIndex - 1];
-                  String prevvolume = {chapter['volume'].toString()}.isNotEmpty
-                      ? 'Vol.${chapter['volume'].toString()}'
-                      : "";
-                  String prevchapterNumber =
-                      {chapter['chapterNumber'].toString()}.isNotEmpty
-                          ? 'Ch.${chapter['chapterNumber'].toString()}'
-                          : "";
-                  final prevTitle = chapter['title'].toString();
-                  final currentTitle =
-                      widget.chapterList[pageIndex]['title'].toString();
-                  return PhotoViewGalleryPageOptions.customChild(
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.all(30.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Next:',
-                            style: TextStyle(
-                                fontSize: 18.0, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            "$prevvolume $prevchapterNumber$prevTitle",
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20.0),
-                          ),
-                          const Text(
-                            'Current:',
-                            style: TextStyle(
-                                fontSize: 18.0, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '$volume $chapterNumber$currentTitle',
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 2,
-                  );
-                } else {
-                  final currentTitle =
-                      widget.chapterList[pageIndex]['title'].toString();
-                  return PhotoViewGalleryPageOptions.customChild(
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.all(30.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Finished:',
-                            style: TextStyle(
-                                fontSize: 18.0, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '$volume $chapterNumber$currentTitle',
-                            softWrap: true,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 20.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 2,
-                  );
-                }
-              } else {
-                return PhotoViewGalleryPageOptions(
-                  imageProvider: CachedNetworkImageProvider(
-                    imageUrls[index - (1 + offset)],
                   ),
-                  minScale: PhotoViewComputedScale.contained,
-                  maxScale: PhotoViewComputedScale.covered * 2,
-                );
-              }
-            },
-            scrollPhysics: const BouncingScrollPhysics(),
-            backgroundDecoration: const BoxDecoration(
-              color: Colors.black,
-            ),
-            pageController: pageController,
-            onPageChanged: (index) {
-              int offset = pageIndex != widget.chapterList.length - 1 ? 0 : 1;
-              if (index == 0) {
-                if (pageIndex == widget.chapterList.length - 1) {
-                  return;
-                }
-                previousChapter();
-              } else if (index == imageUrls.length + 3 - offset) {
-                if (pageIndex == 0) {
-                  return;
-                }
-                nextChapter();
-              }
-            },
+                ],
+              ),
+              Visibility(
+                visible: currentPage < 1 || currentPage > imageUrls.length
+                    ? false
+                    : true,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    color: Colors.black.withOpacity(0),
+                    child: Text(
+                      '$currentPage / ${imageUrls.length}',
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            ],
           );
         }
       },
